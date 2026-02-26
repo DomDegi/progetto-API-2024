@@ -638,10 +638,22 @@ void aggiungi_ricetta(const char* buffer){
     else{
         unsigned int i = hash_function(nome) % SIZE_RICETTARIO;
         int j = 0;
-        while (ricettario.hashtable[i].stato == OCCUPATO){
+        int primo_tomb = -1; // traccia il primo TOMB per riutilizzo ottimale
+        
+        // Continua finché non trovi uno slot VUOTO
+        while (ricettario.hashtable[i].stato != VUOTO){
+            if (ricettario.hashtable[i].stato == TOMB && primo_tomb == -1){
+                primo_tomb = i; // salva il primo TOMB trovato
+            }
             j++;
             i = (i + j*j) % SIZE_RICETTARIO;
         }
+        
+        // Se hai trovato un TOMB durante il probing, riusalo (migliore per la ricerca)
+        if (primo_tomb != -1){
+            i = primo_tomb;
+        }
+        
         inserisci_ricetta(nome, buffer + strlen(nome) + 1, &ricettario.hashtable[i]);
         printf("aggiunta\n");
     }
@@ -685,14 +697,14 @@ int ricerca_ricettario(const char* nome){
     unsigned int inizio = i;
     int j = 0;
     while (ricettario.hashtable[i].stato == TOMB ||
-            (strcmp(ricettario.hashtable[i].ricetta.nome, nome) != 0 && ricettario.hashtable[i].stato == OCCUPATO)){
+            (ricettario.hashtable[i].stato == OCCUPATO && strcmp(ricettario.hashtable[i].ricetta.nome, nome) != 0)){
                 j++;
                 i = (i + j*j) % SIZE_RICETTARIO;
                 if (i == inizio){
                     return -1; //l'hashtable è praticamente piena e la ricetta non è presente
                 }
         }
-    if (strcmp(ricettario.hashtable[i].ricetta.nome, nome) == 0){
+    if (ricettario.hashtable[i].stato == OCCUPATO && strcmp(ricettario.hashtable[i].ricetta.nome, nome) == 0){
         return i; //la ricetta si trova all'indice i
     }
     else{
